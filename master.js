@@ -143,7 +143,7 @@ class ToolSelect{
         }, ...Object.keys(tools).map(name => elt("option", {
             selected: name == state.tool
         }, name)));
-        this.dom = elt("label", null, "🖌 Tool: ", this.select);
+        this.dom = elt("label", null, "Tool: ", this.select);
     }
     syncState(state) {this.select.value = state.tool; }
 }
@@ -156,7 +156,7 @@ class ColorSelect {
             value: state.color,
             onchange: () => dispatch({color: this.input.value})
         });
-        this.dom = elt("label", null, "🎨 Color: ", this.input);
+        this.dom = elt("label", null, "Color: ", this.input);
     }
     syncState(state){ this.input.value = state.color;}
 }
@@ -220,7 +220,7 @@ class SaveButton{
         this.picture = state.picture;
         this.dom = elt("button", {
             onclick: () => this.save()},
-            "💾 Save");
+            "Save");
         }
 
 
@@ -250,7 +250,7 @@ class LoadButton{
 function startLoad(dispatch){
     let input = elt("input", {
         type: "file",
-        onchange: () => finishLoad(input.files[0]),dispatch
+        onchange: () => finishLoad(input.files[0],dispatch)
     });
     document.body.appendChild(input);
     input.click();
