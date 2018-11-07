@@ -47,20 +47,27 @@ class PictureCanvas {
     }
     syncState(picture){
         if(this.picture == picture) return;
+        if(this.picture == null
+            || this.picture.height != picture.height
+            || this.picture.width != picture.width) this.picture = picture;
+        drawPicture(picture, this.dom, scale, this.picture);
         this.picture = picture;
-        drawPicture(this.picture, this.dom, scale);
+
     }
 }
 
-function drawPicture(picture, canvas, scale){
+function drawPicture(picture, canvas, scale, prevPicture){
     canvas.width = picture.width * scale;
     canvas.height = picture.height * scale;
     let cx = canvas.getContext("2d");
 
     for(let y = 0; y < picture.height; y++){
         for(let x = 0; x < picture.width; x++){
-            cx.fillStyle = picture.pixel(x,y);
-            cx.fillRect(x * scale, y * scale, scale, scale);
+            if(prevPicture.pixel(x,y) == picture.pixel(x,y)){
+                cx.fillStyle = picture.pixel(x,y);
+                cx.fillRect(x * scale, y * scale, scale, scale);
+            }
+
         }
     }
 }
@@ -112,14 +119,16 @@ PictureCanvas.prototype.touch = function(startEvent, onDown){
         // APPLICATION
 
 class PixelEditor {
-    constructor(state, config){
+    constructor(state, config) {
         let {tools, controls, dispatch} = config;
         this.state = state;
 
-        this.canvas = new PictureCanvas(state.picture, pos =>{
+        this.canvas = new PictureCanvas(state.picture, pos => {
             let tool = tools[this.state.tool];
             let onMove = tool(pos, this.state, dispatch);
-            if(onMove) return pos => onMove(pos, this.state);
+            if (onMove) {
+                return pos => onMove(pos, this.state, dispatch);
+            }
         });
         this.controls = controls.map(
             Control => new Control(state, config));
@@ -127,14 +136,29 @@ class PixelEditor {
             ...this.controls.reduce(
                 (a, c) => a.concat(" ", c.dom), []));
 
+        this.dom.tabIndex = "0";
 
+        this.dom.addEventListener('keydown', (event) => {
+            const keyName = event.key;
+            if(keyName == "r") this.state.tool = "rectangle";
+            else if (keyName == "d") this.state.tool = "draw";
+            else if (keyName == "f") this.state.tool = "fill";
+            else if (keyName == "p") this.state.tool = "pick";
+            else if (keyName == "z" && event.metaKey) {
+                dispatch({undo: true});
+            }
+
+
+        });
     }
-    syncState(state){
+    syncState(state) {
         this.state = state;
         this.canvas.syncState(state.picture);
-        for(let ctrl of this.controls) ctrl.syncState(state);
+        for (let ctrl of this.controls) ctrl.syncState(state);
     }
+
 }
+
 
 class ToolSelect{
     constructor(state, {tools, dispatch}){
