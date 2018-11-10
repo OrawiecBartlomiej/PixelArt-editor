@@ -47,27 +47,29 @@ class PictureCanvas {
     }
     syncState(picture){
         if(this.picture == picture) return;
-        if(this.picture == null
-            || this.picture.height != picture.height
-            || this.picture.width != picture.width) this.picture = picture;
-        drawPicture(picture, this.dom, scale, this.picture);
+        let prevPicture = this.picture;
         this.picture = picture;
-
+        drawPicture(this.picture, this.dom, scale, prevPicture);
     }
 }
 
 function drawPicture(picture, canvas, scale, prevPicture){
-    canvas.width = picture.width * scale;
-    canvas.height = picture.height * scale;
+    if (prevPicture == null ||
+        prevPicture.width != picture.width ||
+        prevPicture.height != picture.height) {
+        canvas.width = picture.width * scale;
+        canvas.height = picture.height * scale;
+        prevPicture = null;
+    }
     let cx = canvas.getContext("2d");
 
     for(let y = 0; y < picture.height; y++){
         for(let x = 0; x < picture.width; x++){
-            if(prevPicture.pixel(x,y) == picture.pixel(x,y)){
-                cx.fillStyle = picture.pixel(x,y);
+            let color = picture.pixel(x, y);
+            if (prevPicture == null || prevPicture.pixel(x, y) != color) {
+                cx.fillStyle = color;
                 cx.fillRect(x * scale, y * scale, scale, scale);
             }
-
         }
     }
 }
@@ -144,6 +146,8 @@ class PixelEditor {
             else if (keyName == "d") this.state.tool = "draw";
             else if (keyName == "f") this.state.tool = "fill";
             else if (keyName == "p") this.state.tool = "pick";
+            else if (keyName == "c") this.state.tool = "circle";
+            else if (keyName == "s") document.querySelector("input").click();
             else if (keyName == "z" && event.metaKey) {
                 dispatch({undo: true});
             }
@@ -196,6 +200,33 @@ function draw(pos, state, dispatch){
     return drawPixel;
 }
 
+function circle(pos, state, dispatch) {
+    function drawCircle(to){
+        let r = Math.sqrt(Math.pow(to.x - pos.x, 2) +
+                Math.pow(to.y - pos.y, 2));
+        let rCeil = Math.ceil(r);
+        let drawn = [];
+        for(let dy = -rCeil; dy <= rCeil; dy++){
+            for(let dx = -rCeil; dx <= rCeil; dx++){
+                let dist = Math.sqrt(Math.pow(dx,2) + Math.pow(dy,2));
+                if( dist < r){
+                    let y = pos.y+dy, x = pos.x + dx;
+                    if(y < 0 || y >= state.picture.height ||
+                        x < 0 || x >= state.picture.width) continue;
+                    drawn.push({x,y, color: state.color});
+                }
+                else continue;
+            }
+        }
+
+
+        dispatch({picture: state.picture.draw(drawn)});
+    }
+
+    drawCircle(pos);
+    return drawCircle;
+}
+
 function rectangle(start, state, dispatch){
     function drawRectangle(pos){
         let xStart = Math.min(start.x, pos.x);
@@ -236,6 +267,8 @@ function fill({x,y}, state, dispatch){
 function pick(pos, state, dispatch){
     dispatch({color: state.picture.pixel(pos.x, pos.y)});
 }
+
+
 
 // SAVING AND LOADING
 
@@ -354,7 +387,9 @@ const startState = {
     doneAt: 0
 };
 
-const baseTools = {draw, fill, rectangle, pick};
+
+
+const baseTools = {draw, fill, rectangle, pick, circle};
 
 const baseControls = [ToolSelect, ColorSelect,
     SaveButton, LoadButton, UndoButton];
@@ -373,5 +408,6 @@ function startPixelEditor({state = startState,
     return app.dom;
 }
 
-document.querySelector("div")
-    .appendChild(startPixelEditor({}));
+let dom = startPixelEditor({});
+document.querySelector("div").appendChild(dom);
+
